@@ -1,0 +1,3 @@
+[submodule "semkit"]
+	path = semkit
+	url = git@github.com:EmanueleMusumeci/semkit.git
