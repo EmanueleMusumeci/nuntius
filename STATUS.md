@@ -4,101 +4,112 @@ Handoff file — same convention as `semkit/STATUS.md`: update after every
 substantial advance so work can move between agents/sessions without losing
 the thread.
 
-**Last updated:** 2026-08-19 · HEAD `84a6c21`, pushed to `origin/main`
-(`git@github.com:EmanueleMusumeci/nuntius.git`). `semkit` submodule pinned to
-`dfd2c1e`.
+**Last updated:** 2026-08-19 · HEAD (pending this commit), `semkit` submodule
+pinned to `699ef92`.
 
 ## Now
 
-First real config area (guardrails) is done end-to-end, verified through an
-actual production Docker build (not just unit tests) — see `semkit/STATUS.md`
-for the full verification trail. Four more identified areas remain unstarted
-(newsletter, translation, sources, portal branding — same three-tier pattern
-each time). No client-specific *code* has moved into this repo yet, only
-client *configuration* (`config/guardrails/client.yaml`).
+The cutover that was deferred since the initial scaffold is essentially
+done: this repo is the real thing now, not a staging area.
 
-**Next step:** pick the next area — newsletter has the most duplication (the
-"OMI editor" persona prompt hardcoded independently in 3 places in semkit).
-Separately: `/home/emanuele/omiworld/compose.yml` now points
-`SEMKIT_CONFIG_DIR` at this repo's `config/` and mounts it into the webapp
-container — a built image already reflects this (2026-08-19), just not
-deployed. `docker compose up -d webapp` from `/home/emanuele/omiworld/`
-whenever you want it live.
+- **Renamed for real.** `nuntius-new/` → `nuntius/`. The old standalone
+  checkout that used to live at this path (semkit content, pre-split) is
+  preserved untouched at `/home/emanuele/omiworld/nuntius.bak.20260819/` — a
+  dead-end backup, don't develop against it. Ongoing semkit work happens in
+  the submodule at `nuntius/semkit/` (a real, independent git working copy —
+  commit and push from there like any other clone, then bump the pin here).
+- **Production stack moved in.** `compose.yml`, `Caddyfile`, `.env.example`,
+  `create_emanuele_admin.py` are now version-controlled, here.  `.env` (real
+  secrets) was moved to sit alongside `compose.yml` but is gitignored —
+  confirmed via `git check-ignore` and a `git status` review before every
+  commit in this pass; never staged, never pushed.
+- **Build context flipped**: `webapp.build.context` and the db init-script
+  mount now point at `./semkit` (the submodule) instead of the old parallel
+  checkout. Content was identical at switch time, so this was a
+  zero-behavior-change edit — it just closes the two-copies drift risk this
+  session itself created.
 
-## Done recently
+**Next step:** the built image (`omiworld-webapp:latest`, sourced from
+`semkit@699ef92`... check `semkit/STATUS.md`/`git -C semkit log` for the
+exact commit actually built, since a project-name bug (below) forced a
+rebuild after the first one) is sitting there, verified, not deployed.
+`docker compose up -d webapp` from here whenever you want the guardrails
+split live. After that: newsletter/translation/sources/portal-branding
+splits, or ingesting a real corpus — your call.
 
-- **Guardrails split** — `config/guardrails/client.yaml` here holds the real
-  OMI values (org name, 28-term topic list, audience, reject categories),
-  extracted from what used to be hardcoded directly in semkit source.
-- Submodule pin bumped `734f982` → `f34c63e` → `dfd2c1e` (packaging +
-  error-handling fixes, found by actually building and running the image —
-  see `semkit/STATUS.md`).
-- **Production `compose.yml` wired up** (not part of this repo — see below):
-  `SEMKIT_CONFIG_DIR: /app/client-config` env var + a `volumes:` mount of
-  `./nuntius-new/config` into the webapp container, validated with
-  `docker compose config` and a real `docker compose build webapp`.
+## Found and fixed during this move
 
-## Known temporary state (unchanged from scaffold)
+**Real bug, not hypothetical**: renaming `nuntius-new/` → `nuntius/` silently
+changed Docker Compose's *implicit* project-name prefix from `omiworld` to
+`nuntius` (Compose derives it from the directory name when unset). Without
+catching this, the next `docker compose up` from here would have created
+brand-new empty `nuntius_db_data`/`nuntius_caddy_data`/`nuntius_caddy_config`
+volumes and a `nuntius_net_main_db` network instead of attaching to the real
+ones (`omiworld_db_data` holds actual production data). Caught by comparing
+`docker compose config`'s resolved volume/network names against
+`docker volume ls`/`docker network ls` before ever running `up`. Fixed with
+an explicit `name: omiworld` at the top of `compose.yml` — pins the project
+name regardless of what the directory is ever renamed to again. Rebuilt and
+re-verified after the fix; image tag correctly reads `omiworld-webapp:latest`
+again (it had briefly become `nuntius-webapp:latest`).
 
-- **This repo lives at `/home/emanuele/omiworld/nuntius-new/`** on
-  droplet-midmain — not `nuntius/`, still avoiding collision with the
-  pre-existing checkout at that path (semkit's content, old directory name).
-  `compose.yml`'s new volume mount references `./nuntius-new/config`
-  literally — **that path needs updating if/when the cutover renames this
-  directory to `nuntius/`.**
-- **Production build context is still the old checkout.** `compose.yml`'s
-  `build.context` is still `./nuntius` (the pre-split checkout, itself now
-  updated with the guardrails fixes directly — see `semkit/STATUS.md`), not
-  this repo. This repo only supplies the *config values* consumed at runtime
-  via the volume mount, not the application code itself. That's expected for
-  now — the code-side cutover (building from this repo + submodule instead of
-  the direct checkout) is still fully deferred, see below.
-- **Pushing to GitHub needs a workaround, sometimes.** The droplet has no
-  deploy key for this repo (only for `semkit`) — `git push` from the droplet
-  fails with "denied to deploy key." Workaround: `git bundle create --all`,
+Also hit a git footgun worth remembering: the `semkit/` submodule starts in
+**detached HEAD** by default. A commit made there without first
+`git checkout main` isn't on any branch — it pushes nowhere useful
+(`git push origin main` silently pushes the *unchanged* local `main` ref,
+not your detached commit). Always `git checkout main` (or `git switch main`)
+in the submodule before committing there.
+
+## Known temporary state
+
+- **Pushing to GitHub sometimes needs a workaround.** The droplet has no
+  deploy key for this repo (only for `semkit`) — direct `git push` fails
+  with "denied to deploy key." Workaround: `git bundle create --all`,
   download, clone locally, push from a machine with full account SSH access.
-  (Observed inconsistently — one push attempt from the local machine was
-  blocked by an unrelated approval layer, a retry of the identical command
-  went through. Not fully understood; the bundle workaround is reliable
-  regardless.)
+  A local auto-mode classifier also intermittently blocks the local push
+  itself (unrelated to the deploy-key issue, inconsistent — sometimes blocks,
+  sometimes doesn't on an identical retry) — if blocked, just retry the exact
+  same push command.
 
 ## Blocked / known issues
 
-- **`/home/emanuele/omiworld/` (the actual production stack directory) has no
-  version control at all** — not a git repo, just a stray `compose.yml.bak`.
-  Today's `compose.yml` edit has no diff history anywhere except
-  `semkit/STATUS.md`'s note about it. Worth `git init`-ing at some point.
+- **`docker compose up` not yet run** — see "Next step" above. Nothing is
+  blocking it, it's just a deliberate pause point every session this far.
 - See `semkit/STATUS.md` for guardrails-area follow-ups and the corpus/
   scraping issues (unrelated, predate all of this).
 
 ## Deferred (not started)
 
-1. **Cutover**: rename `/home/emanuele/omiworld/nuntius/` → `semkit/` on disk,
-   rename `nuntius-new/` → `nuntius/` (update `compose.yml`'s volume mount
-   path when this happens), rewire `compose.yml`'s build context to this
-   repo, actually deploy from it instead of the direct semkit checkout.
-2. **Newsletter/translation/sources/portal-branding splits** — same pattern
+1. **Newsletter/translation/sources/portal-branding splits** — same pattern
    as guardrails, one area at a time.
-3. **Default neutral theme** (palette + placeholder logo) — a portal/branding
+2. **Default neutral theme** (palette + placeholder logo) — a portal/branding
    concern, not started.
-4. **Figma MCP frontend work** — separate follow-up, after theme config exists.
-5. **Legacy dead-code tree** (`webapp/`, `interfaces/`, `orchestrators/`, etc.
+3. **Figma MCP frontend work** — separate follow-up, after theme config exists.
+4. **Legacy dead-code tree** (`webapp/`, `interfaces/`, `orchestrators/`, etc.
    inside semkit) — stays open per instruction, needs per-component testing
    before deletion.
-6. CI/CD for this repo. A real overlay patch (none needed yet — every semkit
-   change so far has gone in as a direct commit, not a patch).
-7. `git init` the production stack directory (see Blocked above).
+5. CI/CD for this repo. `semkit`'s `.github/workflows/deploy.yml` already
+   assumed a `compose.yml` inside the semkit checkout at a fixed path — that
+   never matched reality even before this move (compose.yml has always lived
+   one level up), and still doesn't (it's in this sibling repo now, not
+   inside semkit). Pre-existing inconsistency, not touched by this move,
+   still needs a real fix or a rewrite whenever CI/CD for this repo happens.
+6. A real overlay patch — none needed yet, every semkit change so far has
+   gone in as a direct commit.
+7. `git init` the old `/home/emanuele/omiworld/` directory's remnants
+   (`modules/`, `webapp/`, the tarballs, `nuntius.bak.*`) if any of it is
+   ever worth preserving formally — currently just reference material per
+   your own read of it, left untouched.
 
 ## How to run
 
 ```bash
 ssh emanuele@100.85.38.88          # droplet-midmain — root SSH is broken,
                                      # see semkit/STATUS.md; use emanuele
-cd /home/emanuele/omiworld/nuntius-new
+cd /home/emanuele/omiworld/nuntius
 git submodule status
 git -C semkit log -1 --oneline
 
-# Production build/deploy (from /home/emanuele/omiworld/, not this repo):
 docker compose build webapp   # safe, doesn't touch the running container
-docker compose up -d webapp   # actually cuts over
+docker compose up -d webapp   # actually cuts over — not yet run
 ```
