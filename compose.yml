@@ -1,0 +1,150 @@
+name: omiworld
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: omiworld-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - public_edge
+    environment:
+      DOMAIN: ${DOMAIN:-omiworld.emanuelemusumeci.com}
+      ACME_EMAIL: ${ACME_EMAIL:-emanuele.musumeci@gmail.com}
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.3"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  webapp:
+    build:
+      context: ./semkit
+      dockerfile: Dockerfile.prod
+    container_name: omiworld-webapp
+    restart: unless-stopped
+    networks:
+      - public_edge
+      - net_main_db
+    volumes:
+      - ./config:/app/client-config:ro
+    expose: ["8080"]
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DATABASE_URL_SOURCES: postgresql://${POSTGRES_USER:-omiworld}:${POSTGRES_PASSWORD}@db:5432/omiworld_sources
+      DATABASE_URL_ARCHIVE: postgresql://${POSTGRES_USER:-omiworld}:${POSTGRES_PASSWORD}@db:5432/omiworld_archive
+      DATABASE_URL_NEWSLETTER: postgresql://${POSTGRES_USER:-omiworld}:${POSTGRES_PASSWORD}@db:5432/omiworld_newsletter
+      DATABASE_URL_TRANSLATION: postgresql://${POSTGRES_USER:-omiworld}:${POSTGRES_PASSWORD}@db:5432/omiworld_translation
+      DATABASE_URL_APP: postgresql://${POSTGRES_USER:-omiworld}:${POSTGRES_PASSWORD}@db:5432/omiworld_app
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_API_KEY_CHAT: ${OPENROUTER_API_KEY_CHAT:-}
+      OPENROUTER_API_KEY_NEWSLETTER: ${OPENROUTER_API_KEY_NEWSLETTER:-}
+      OPENROUTER_API_KEY_TRANSLATION: ${OPENROUTER_API_KEY_TRANSLATION:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JINA_API_KEY: ${JINA_API_KEY:-}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      RAG_LLM_MODEL: ${RAG_LLM_MODEL:-openai/gpt-4o-mini}
+      NEWSLETTER_LLM_MODEL: ${NEWSLETTER_LLM_MODEL:-google/gemini-2.5-flash}
+      NEWSLETTER_LLM_TEMPERATURE: ${NEWSLETTER_LLM_TEMPERATURE:-0.4}
+      NEWSLETTER_SENDER_NAME: ${NEWSLETTER_SENDER_NAME:-OMIWORLD}
+      NEWSLETTER_SENDER_ADDRESS: ${NEWSLETTER_SENDER_ADDRESS:-OMIWORLD — Missionary Oblates of Mary Immaculate}
+      DOCLING_SERVE_URL: ${DOCLING_SERVE_URL:-}
+      SMTP_SERVER: ${SMTP_SERVER:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      NEWSLETTER_FROM_EMAIL: ${NEWSLETTER_FROM_EMAIL:-newsletter@omiworld.org}
+      OMIWORLD_BASE_URL: https://${DOMAIN:-omiworld.emanuelemusumeci.com}
+      GUARDRAILS_ENABLED: ${GUARDRAILS_ENABLED:-true}
+      SEMKIT_CONFIG_DIR: /app/client-config
+      SCRAPER_SCHEDULE_ENABLED: ${SCRAPER_SCHEDULE_ENABLED:-false}
+      SCRAPER_INTERVAL_DAYS: ${SCRAPER_INTERVAL_DAYS:-3}
+      SCRAPER_MAX_INTERVALS: ${SCRAPER_MAX_INTERVALS:-5}
+      SCRAPER_START_DELAY: ${SCRAPER_START_DELAY:-120}
+      WEBHOOK_BASE_URL: https://${DOMAIN:-omiworld.emanuelemusumeci.com}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\"http://127.0.0.1:8080/portal/\").status==200 else 1)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: omiworld-db
+    restart: unless-stopped
+    networks:
+      - net_main_db
+    expose: ["5432"]
+    environment:
+      POSTGRES_DB: omiworld
+      POSTGRES_USER: ${POSTGRES_USER:-omiworld}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./semkit/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+          cpus: "0.4"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omiworld} -d omiworld"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+
+  docling-serve:
+    profiles: ["docling"]
+    image: ghcr.io/docling-project/docling-serve:latest
+    container_name: omiworld-docling
+    restart: "no"
+    networks:
+      - net_main_db
+    expose: ["5001"]
+    environment:
+      DOCLING_SERVE_PORT: "5001"
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\\\"http://127.0.0.1:5001/health\\\").status==200 else 1)\" || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  public_edge:
+    external: true
+    name: omiworld_public_edge
+  net_main_db:
+    driver: bridge
+    internal: true
