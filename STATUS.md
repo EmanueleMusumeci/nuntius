@@ -4,8 +4,8 @@ Handoff file — same convention as `semkit/STATUS.md`: update after every
 substantial advance so work can move between agents/sessions without losing
 the thread.
 
-**Last updated:** 2026-08-19 · HEAD (pending this commit), `semkit` submodule
-pinned to `699ef92`.
+**Last updated:** 2026-08-20 · `semkit` submodule pinned to `699ef92`,
+deployed live.
 
 ## Now
 
@@ -29,13 +29,18 @@ done: this repo is the real thing now, not a staging area.
   zero-behavior-change edit — it just closes the two-copies drift risk this
   session itself created.
 
-**Next step:** the built image (`omiworld-webapp:latest`, sourced from
-`semkit@699ef92`... check `semkit/STATUS.md`/`git -C semkit log` for the
-exact commit actually built, since a project-name bug (below) forced a
-rebuild after the first one) is sitting there, verified, not deployed.
-`docker compose up -d webapp` from here whenever you want the guardrails
-split live. After that: newsletter/translation/sources/portal-branding
-splits, or ingesting a real corpus — your call.
+**Guardrails split is live in production** (deployed 2026-08-20,
+`docker compose up -d webapp` from `semkit@699ef92`). Verified post-deploy,
+not just built: `omiworld-webapp` healthy, public `/portal/` returns 200,
+`SEMKIT_CONFIG_DIR` resolved correctly inside the container, `client.yaml`
+mounted with real OMI values, `GuardrailsManager` instantiated for real
+inside the live container returned `enabled: True` with a correct keyword
+match. Data integrity double-checked after the deploy (see below) — archive
+still has its 1 document, sources its 1 row, both admin users present,
+unchanged.
+
+**Next step:** newsletter/translation/sources/portal-branding splits, or
+ingesting a real corpus — your call.
 
 ## Found and fixed during this move
 
@@ -60,6 +65,18 @@ Also hit a git footgun worth remembering: the `semkit/` submodule starts in
 not your detached commit). Always `git checkout main` (or `git switch main`)
 in the submodule before committing there.
 
+**One more, found at actual deploy time**: `docker compose up -d webapp`
+recreated `omiworld-db` too, despite only `webapp` being named on the command
+line. Compose stores per-container config-hash labels (including the
+project's working directory) and recreates anything whose labels drifted —
+db's *labels* changed because the compose file's directory changed, even
+though its meaningful config (image/env/volumes) didn't. Confirmed harmless:
+container recreation doesn't touch the named volume (`omiworld_db_data`'s
+`CreatedAt` is still `2026-07-27`, untouched), and a live data query after
+the deploy confirmed all rows intact. Worth expecting on any future
+`docker compose up` from here, at least once — the labels should be stable
+now that this directory won't move again.
+
 ## Known temporary state
 
 - **Pushing to GitHub sometimes needs a workaround.** The droplet has no
@@ -73,10 +90,8 @@ in the submodule before committing there.
 
 ## Blocked / known issues
 
-- **`docker compose up` not yet run** — see "Next step" above. Nothing is
-  blocking it, it's just a deliberate pause point every session this far.
-- See `semkit/STATUS.md` for guardrails-area follow-ups and the corpus/
-  scraping issues (unrelated, predate all of this).
+See `semkit/STATUS.md` for guardrails-area follow-ups and the corpus/
+scraping issues (unrelated, predate all of this — still just 1 document).
 
 ## Deferred (not started)
 
@@ -111,5 +126,6 @@ git submodule status
 git -C semkit log -1 --oneline
 
 docker compose build webapp   # safe, doesn't touch the running container
-docker compose up -d webapp   # actually cuts over — not yet run
+docker compose up -d webapp   # cuts over — done 2026-08-20, expect a
+                                # one-time db container recreate (see above)
 ```
