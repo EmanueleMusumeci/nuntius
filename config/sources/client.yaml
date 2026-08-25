@@ -1,0 +1,10 @@
+# OMIWORLD deployment - sources scraping config
+default_scrape_method: "firecrawl"
+max_concurrent_scrapes: 3
+scrape_timeout_seconds: 60
+default_check_interval_days: 3
+max_scrape_intervals: 5
+
+# omiworld.org wraps real content in <main>; menus/nav live outside it.
+firecrawl_include_tags: ["main"]
+firecrawl_exclude_tags: ["nav", ".sf-menu", "footer"]
