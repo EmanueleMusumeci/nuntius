@@ -1,10 +1,46 @@
-# OMIWORLD deployment - sources scraping config
-default_scrape_method: "firecrawl"
+default_scrape_method: firecrawl
 max_concurrent_scrapes: 3
 scrape_timeout_seconds: 60
 default_check_interval_days: 3
 max_scrape_intervals: 5
-
-# omiworld.org wraps real content in <main>; menus/nav live outside it.
-firecrawl_include_tags: ["main"]
-firecrawl_exclude_tags: ["nav", ".sf-menu", "footer"]
+firecrawl_include_tags:
+- main
+firecrawl_exclude_tags:
+- nav
+- .sf-menu
+- footer
+deep_crawl:
+  enabled: true
+  url: https://www.omiworld.org/
+  include_paths:
+  - our-charism/.*
+  - our-mission/.*
+  - our-family/leadership/.*
+  - our-family/vocations-and-formation/.*
+  - our-family/oblate-lay-associations/.*
+  - category/news/.*
+  - 2026/.*
+  exclude_paths:
+  - /fr/
+  - /es/
+  - /it/
+  - /de/
+  - wp-
+  - login
+  - register
+  - feed
+  - reserved-area
+  - .jpg
+  - .png
+  - .pdf
+  limit: 250
+  max_discovery_depth: 4
+monitor:
+  enabled: true
+  name: omiworld-site-monitor
+  schedule_cron: 23 4 * * *
+  goal: 'Meaningful content changes on this Oblate site: news posts, biographies,
+    mission texts, documents, dictionary entries. Ignore timestamps, copyright years,
+    cookie/security notices and navigation menus.'
+  page_limit: 250
+  webhook_url: https://omiworld.emanuelemusumeci.com/webhooks/firecrawl
