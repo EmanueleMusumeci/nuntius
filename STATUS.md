@@ -4,6 +4,10 @@ Handoff file — same convention as `semkit/STATUS.md`: update after every
 substantial advance so work can move between agents/sessions without losing
 the thread.
 
+**Last updated:** 2026-08-25 · `semkit` submodule bumped to the client-config-splits commit (newsletter/translation/sources/portal branding), deployed via the fixed GitHub Actions deploy workflow.
+
+**Portal user `alice` created and verified live end-to-end** (login, translate, chat, SSE gating). Deploy workflow bug fixed in semkit: it ran docker compose from the stack parent dir; compose.yml lives in this repo. Submodule sync step added to the workflow.
+
 **Last updated:** 2026-08-20 · `semkit` submodule pinned to `699ef92`,
 deployed live.
 
