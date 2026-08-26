@@ -81,7 +81,6 @@ services:
       HELPDESK_EMAIL: ${HELPDESK_EMAIL:-${ACME_EMAIL}}
       NTFY_URL: ${NTFY_URL:-}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
- ${HELPDESK_EMAIL:-${ACME_EMAIL}}
       FIRECRAWL_WEBHOOK_SECRET: ${FIRECRAWL_WEBHOOK_SECRET:-}
       WEBHOOK_BASE_URL: https://${DOMAIN:-omiworld.emanuelemusumeci.com}
     deploy:
