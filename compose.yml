@@ -39,6 +39,7 @@ services:
       - net_main_db
     volumes:
       - ./config:/app/client-config:ro
+      - /home/emanuele/models:/models:ro
     expose: ["8080"]
     environment:
       APP_ENV: ${APP_ENV:-production}
@@ -69,6 +70,7 @@ services:
       NEWSLETTER_FROM_EMAIL: ${NEWSLETTER_FROM_EMAIL:-newsletter@omiworld.org}
       OMIWORLD_BASE_URL: https://${DOMAIN:-omiworld.emanuelemusumeci.com}
       GUARDRAILS_ENABLED: ${GUARDRAILS_ENABLED:-true}
+      NLLB_MODEL_PATH: ${NLLB_MODEL_PATH:-/models/nllb-200-600m-int8}
       SEMKIT_CONFIG_DIR: /app/client-config
       SCRAPER_SCHEDULE_ENABLED: ${SCRAPER_SCHEDULE_ENABLED:-false}
       SCRAPER_INTERVAL_HOURS: ${SCRAPER_INTERVAL_HOURS:-12}
