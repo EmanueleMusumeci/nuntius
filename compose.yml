@@ -89,8 +89,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: "0.5"
+          memory: 1536M
+          cpus: "2.0"
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\"http://127.0.0.1:8080/portal/\").status==200 else 1)'"]
       interval: 30s
@@ -140,7 +140,7 @@ services:
       resources:
         limits:
           memory: 1536M
-          cpus: "0.5"
+          cpus: "2.0"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\\\"http://127.0.0.1:5001/health\\\").status==200 else 1)\" || exit 1"]
       interval: 60s
