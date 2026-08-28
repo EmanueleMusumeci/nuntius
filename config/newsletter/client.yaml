@@ -13,5 +13,6 @@ topics:
 audience_description: "Oblates, collaborators, and friends of the Oblate mission"
 confirmation_base_url: "https://omiworld.emanuelemusumeci.com"
 default_language: "en"
+periodicity: "bi-weekly"
 max_sources_per_draft: 12
 draft_summary_length: 450
