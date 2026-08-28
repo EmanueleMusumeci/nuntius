@@ -1,0 +1,17 @@
+# OMIWORLD Newsletter Client Configuration
+org_name: "Order of Oblate Monks"
+org_type: "a Catholic religious order"
+newsletter_name: "OMIWORLD Digest"
+sender_name: "OMIWORLD Newsletter"
+sender_email: "newsletter@omiworld.org"
+topics:
+  - "Missionary work"
+  - "General Council activities"
+  - "Regional Oblate missions"
+  - "Vatican updates"
+  - "Oblate spirituality and charism"
+audience_description: "Oblates, collaborators, and friends of the Oblate mission"
+confirmation_base_url: "https://omiworld.emanuelemusumeci.com"
+default_language: "en"
+max_sources_per_draft: 12
+draft_summary_length: 450
