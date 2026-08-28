@@ -30,8 +30,26 @@ topics:
   - deacon
   - bishop
   - parish
+  - vatican
+  - pope
+  - holy see
+  - papal
+  - holy father
+  - vatican news
+  - catholic world
+  - humanitarian
+  - earthquake relief
+  - caritas
+  - ecumenism
+  - dialogue
+  - justice and peace
+  - jpic
+  - Laudato Si
+  - general council
+  - superior general
+  - cor unum
 
-audience_description: "a Catholic religious community"
+audience_description: "a Catholic religious community and friends of the Oblate mission worldwide"
 
 reject_categories:
   - "promotional spam or commercial advertising"
