@@ -15,4 +15,4 @@ confirmation_base_url: "https://omiworld.emanuelemusumeci.com"
 default_language: "en"
 periodicity: "weekly"
 max_sources_per_draft: 12
-draft_summary_length: 450
+draft_summary_length: 1100
